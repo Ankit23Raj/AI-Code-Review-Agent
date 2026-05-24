@@ -55,3 +55,24 @@ def get_file_content(
     return file.decoded_content.decode(
         "utf-8"
     )
+
+
+def post_pr_comment(
+    repo_name,
+    pr_number,
+    message
+):
+    # Load the repository object first so we can reach the pull request.
+    repo = get_repository(
+        repo_name
+    )
+
+    # Load the pull request that we want to comment on.
+    pull_request = repo.get_pull(
+        pr_number
+    )
+
+    # Add the review message as a normal PR comment.
+    pull_request.create_issue_comment(
+        message
+    )
