@@ -1,7 +1,12 @@
+def _get_value(item, key, default=""):
+    if isinstance(item, dict):
+        return item.get(key, default)
+    return getattr(item, key, default)
+
 def format_review_markdown(review):
     lines = []
 
-    lines.append(f"# Review Summary\n")
+    lines.append("# Review Summary\n")
     lines.append(f"{review.get('summary', 'No summary available')}\n")
 
     findings = review.get("findings", [])
@@ -14,11 +19,11 @@ def format_review_markdown(review):
 
     for finding in findings:
         lines.append(
-            f"### {finding.get('severity', 'INFO')} - {finding.get('category', 'General')}"
+            f"### {_get_value(finding, 'severity', 'INFO')} - {_get_value(finding, 'category', 'General')}"
         )
-        lines.append(f"- Message: {finding.get('message', '')}")
-        lines.append(f"- Suggestion: {finding.get('suggestion', '')}")
-        lines.append(f"- Agent: {finding.get('agent_name', '')}")
+        lines.append(f"- Message: {_get_value(finding, 'message', '')}")
+        lines.append(f"- Suggestion: {_get_value(finding, 'suggestion', '')}")
+        lines.append(f"- Agent: {_get_value(finding, 'agent_name', '')}")
         lines.append("")
 
     return "\n".join(lines)
