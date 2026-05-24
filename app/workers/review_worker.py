@@ -20,10 +20,11 @@ redis_connection = Redis.from_url(
 )
 
 try:
+    # Ping Redis so we know the worker can talk to the queue backend.
     redis_connection.ping()
     print("Redis connected")
 except Exception as e:
-    print("Redis connection error:", e)
+    print("Redis Error:", e)
 
 queue = Queue(
     connection=redis_connection
