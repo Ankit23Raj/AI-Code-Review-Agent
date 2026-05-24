@@ -1,15 +1,13 @@
-from dotenv import find_dotenv, load_dotenv
+from dotenv import load_dotenv
 import os
 
 from app.utils.logger import log
 
-dotenv_path = find_dotenv()
-ENV_LOADED = load_dotenv(dotenv_path)
-
-# This helps verify that the environment file was loaded at startup.
-log(
-	f".env loaded: {ENV_LOADED}"
-)
+# Load environment variables from the local .env file.
+load_dotenv()
 
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+
+# Confirm the token exists without printing the token itself.
+log(f"GitHub token loaded: {bool(GITHUB_TOKEN)}")
 

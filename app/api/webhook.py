@@ -1,20 +1,20 @@
-from app.workers.review_worker import queue
 from fastapi import APIRouter
-from app.utils.logger import log
+
+from app.workers.review_worker import queue
 
 router = APIRouter()
+
 
 @router.post("/webhook")
 async def github_webhook(payload: dict):
 
-    # Log the webhook payload details so we can confirm GitHub reached FastAPI.
-    log("Webhook received")
-    log(
-        f"Repository: {payload.get('repository', {}).get('full_name')}"
-    )
-    log(
-        f"PR number: {payload.get('pull_request', {}).get('number')}"
-    )
+    # Read the repository and PR number safely from the incoming payload.
+    repository = payload.get("repository", {}).get("full_name")
+    pr_number = payload.get("pull_request", {}).get("number")
+
+    print("Webhook received")
+    print("Repository:", repository)
+    print("PR number:", pr_number)
 
     # Push the review job into Redis so the RQ worker can process it.
     job = queue.enqueue(
@@ -22,11 +22,7 @@ async def github_webhook(payload: dict):
         payload
     )
 
-    # Confirm that the enqueue step really happened.
-    log(
-        f"queue.enqueue() executed: {job.id}"
-    )
+    # Confirm the job was accepted by the queue.
+    print("queue.enqueue() executed:", job.id)
 
-    return {
-        "status":"Review job queued"
-    }
+    return {"status": "Job added"}
