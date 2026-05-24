@@ -1,4 +1,8 @@
 import os
+
+# macOS needs this before RQ forks worker processes.
+os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
+
 from redis import Redis
 from rq import Queue
 
@@ -77,6 +81,11 @@ def process_review(payload):
             repository,
             file.filename,
         )
+
+        # Skip files that cannot be safely decoded, like binary files.
+        if content is None:
+            log(f"Skipping unreadable file: {file.filename}")
+            continue
 
         # Run the modular analyzer and collect all findings.
         review = analyze_code(content)
@@ -162,3 +171,5 @@ def process_review(payload):
             )
         except Exception as e:
             log(f"PR Comment Error: {e}")
+
+    log("Review completed")

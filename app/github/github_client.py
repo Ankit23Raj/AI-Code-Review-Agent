@@ -1,3 +1,5 @@
+import os
+
 from github import Github
 from app.config import GITHUB_TOKEN
 
@@ -45,13 +47,25 @@ def get_file_content(
 ):
 
     # Load the file contents directly from GitHub.
+    if os.path.basename(file_path) == ".DS_Store" or file_path.endswith(".DS_Store"):
+        return None
+
     repo = get_repository(
         repo_name
     )
 
-    file = repo.get_contents(file_path)
+    try:
+        file = repo.get_contents(file_path)
 
-    return file.decoded_content.decode("utf-8")
+        # Some files are binary or not safe to decode as UTF-8.
+        return file.decoded_content.decode("utf-8")
+
+    except UnicodeDecodeError:
+        return None
+
+    except Exception as e:
+        print(f"File read error: {e}")
+        return None
 
 
 def post_pr_comment(
