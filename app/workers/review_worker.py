@@ -39,27 +39,34 @@ def process_review(payload):
     )
 
     for file in files:
-
-        print(
-            "Reviewing:",
-            file.filename
-        )
+        print(f"Reviewing: {file.filename}")
 
         content = get_file_content(
             repository,
-            file.filename
+            file.filename,
         )
 
-        print(
-            review = analyze_code(
-    content
-)
+        review = analyze_code(content)
 
-print(
-    "Review Result:"
-)
+        print("Security:")
+        if review["security"]:
+            for finding in review["security"]:
+                print(f"* {finding}")
+        else:
+            print("* No security findings.")
 
-for item in review:
+        print("Quality:")
+        if review["quality"]:
+            for finding in review["quality"]:
+                print(f"* {finding}")
+        else:
+            print("* No quality findings.")
 
-    print("-", item)
-        )
+        print("Best Practices:")
+        if review["best_practices"]:
+            for finding in review["best_practices"]:
+                print(f"* {finding}")
+        else:
+            print("* No best practice findings.")
+
+        print("")
