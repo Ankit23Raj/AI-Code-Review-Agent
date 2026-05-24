@@ -1,7 +1,9 @@
-from app.workers.analyzer import analyze_code
 import os
 from redis import Redis
 from rq import Queue
+
+from app.utils.logger import log
+from app.workers.analyzer import analyze_code
 
 from app.github.github_client import (
     get_changed_files,
@@ -22,29 +24,26 @@ redis_connection = Redis.from_url(
 try:
     # Ping Redis so we know the worker can talk to the queue backend.
     redis_connection.ping()
-    print("Redis connected")
+    log("Redis connected")
 except Exception as e:
-    print("Redis Error:", e)
+    log(f"Redis Error: {e}")
 
 queue = Queue(
     connection=redis_connection
 )
 
 try:
-    print(
-        "Queue status:",
-        queue.name,
-        "size=",
-        queue.count
+    log(
+        f"Queue status: {queue.name} size={queue.count}"
     )
 except Exception as e:
-    print("Queue status error:", e)
+    log(f"Queue status error: {e}")
 
 def process_review(payload):
 
     # This runs inside the RQ worker process when a queued job is picked up.
-    print("Worker started")
-    print("Job received")
+    log("Worker started")
+    log("Job received")
 
     repository = payload.get(
         "repository",
@@ -60,9 +59,7 @@ def process_review(payload):
         "number"
     )
 
-    print(
-        "Starting review..."
-    )
+    log("Starting review...")
 
     files = get_changed_files(
         repository,
@@ -70,10 +67,10 @@ def process_review(payload):
     )
 
     for file in files:
-        print("Processing review")
+        log("Processing review")
 
         # Review one changed file at a time so the output stays easy to follow.
-        print(f"Reviewing: {file.filename}")
+        log(f"Reviewing: {file.filename}")
 
         # Fetch the latest file content from GitHub before running the checks.
         content = get_file_content(
@@ -85,13 +82,12 @@ def process_review(payload):
         review = analyze_code(content)
 
         # Confirm we have analyzer output before trying to post a comment.
-        print(
-            "Analyzer output exists:",
-            review is not None
+        log(
+            f"Analyzer output exists: {review is not None}"
         )
-        print(
-            "Analyzer findings count:",
-            len(review["security"]) + len(review["quality"]) + len(review["best_practices"])
+        log(
+            "Analyzer findings count: "
+            f"{len(review['security']) + len(review['quality']) + len(review['best_practices'])}"
         )
 
         # Build a Markdown message that can be posted as a PR comment.
@@ -134,28 +130,28 @@ def process_review(payload):
 
         review_text = "\n".join(review_message)
 
-        print("Security:")
+        log("Security:")
         if review["security"]:
             for finding in review["security"]:
-                print(f"* {finding}")
+                log(f"* {finding}")
         else:
-            print("* No security findings.")
+            log("* No security findings.")
 
-        print("Quality:")
+        log("Quality:")
         if review["quality"]:
             for finding in review["quality"]:
-                print(f"* {finding}")
+                log(f"* {finding}")
         else:
-            print("* No quality findings.")
+            log("* No quality findings.")
 
-        print("Best Practices:")
+        log("Best Practices:")
         if review["best_practices"]:
             for finding in review["best_practices"]:
-                print(f"* {finding}")
+                log(f"* {finding}")
         else:
-            print("* No best practice findings.")
+            log("* No best practice findings.")
 
-        print("")
+        log("")
 
         # Post the finished review back to the pull request as a GitHub comment.
         try:
@@ -165,4 +161,4 @@ def process_review(payload):
                 review_text,
             )
         except Exception as e:
-            print("PR Comment Error:", e)
+            log(f"PR Comment Error: {e}")

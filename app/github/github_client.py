@@ -1,10 +1,10 @@
 from github import Github
 from app.config import GITHUB_TOKEN
+from app.utils.logger import log
 
 # This log helps confirm the token was loaded without exposing its value.
-print(
-    "GitHub token loaded:",
-    bool(GITHUB_TOKEN)
+log(
+    f"GitHub token loaded: {bool(GITHUB_TOKEN)}"
 )
 
 github_client = Github(
@@ -13,9 +13,14 @@ github_client = Github(
 
 def get_repository(repo_name):
 
-    return github_client.get_repo(
+    # Fetch the repository object from GitHub.
+    repo = github_client.get_repo(
         repo_name
     )
+
+    log("Repository fetch works")
+
+    return repo
 
 
 def get_pull_request(
@@ -27,9 +32,14 @@ def get_pull_request(
         repo_name
     )
 
-    return repo.get_pull(
+    # Fetch the pull request so the worker can inspect the review target.
+    pull_request = repo.get_pull(
         pr_number
     )
+
+    log("Pull request fetch works")
+
+    return pull_request
 
 
 def get_changed_files(
@@ -42,7 +52,11 @@ def get_changed_files(
         pr_number
     )
 
-    return pull_request.get_files()
+    changed_files = pull_request.get_files()
+
+    log("Changed file retrieval works")
+
+    return changed_files
 
 
 def get_file_content(
@@ -57,6 +71,8 @@ def get_file_content(
     file = repo.get_contents(
         file_path
     )
+
+    log("File content retrieval works")
 
     return file.decoded_content.decode(
         "utf-8"
@@ -73,25 +89,23 @@ def post_pr_comment(
         repo = get_repository(
             repo_name
         )
-        print(
-            "Repository object exists:",
-            repo is not None
+        log(
+            f"Repository object exists: {repo is not None}"
         )
 
         # Load the pull request that we want to comment on.
         pull_request = repo.get_pull(
             pr_number
         )
-        print(
-            "PR object exists:",
-            pull_request is not None
+        log(
+            f"PR object exists: {pull_request is not None}"
         )
 
         # Add the review message as a normal PR comment.
-        print("Creating PR comment...")
+        log("Creating PR comment...")
         pull_request.create_issue_comment(
             message
         )
-        print("Comment successfully posted")
+        log("Comment posted successfully")
     except Exception as e:
-        print("PR Comment Error:", e)
+        log(f"PR Comment Error: {e}")
