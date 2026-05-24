@@ -1,0 +1,2 @@
+def badFunctionName():
+    print("hello")
