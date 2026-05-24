@@ -1,39 +1,27 @@
 from fastapi import APIRouter
-from app.github.github_client import get_changed_files
+from app.github.github_client import (
+    get_changed_files,
+    get_file_content
+)
+if repository and pr_number:
 
-router = APIRouter()
-
-@router.post("/webhook")
-async def github_webhook(payload: dict):
-
-    repository = payload.get(
-        "repository",
-        {}
-    ).get(
-        "full_name"
+    files = get_changed_files(
+        repository,
+        pr_number
     )
 
-    pr_number = payload.get(
-        "pull_request",
-        {}
-    ).get(
-        "number"
-    )
+    for file in files:
 
-    if repository and pr_number:
-
-        files = get_changed_files(
-            repository,
-            pr_number
+        print(
+            "Changed file:",
+            file.filename
         )
 
-        for file in files:
+        content = get_file_content(
+            repository,
+            file.filename
+        )
 
-            print(
-                "Changed file:",
-                file.filename
-            )
-
-    return {
-        "status":"success"
-    }
+        print(
+            content[:200]
+        )
