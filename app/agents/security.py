@@ -1,8 +1,21 @@
 from app.agents.model_adapter import ask_model
 from app.reviewer.schemas import Finding
+from app.rag.search import search_similar_code
 
 def run_security_agent(context):
     findings = []
+
+    query = {
+        "file_path": "",
+        "symbol_name": "",
+        "snippet": context
+    }
+
+    search_result = search_similar_code(query)
+    best_match = search_result.get("best_match")
+    extra_context = ""
+    if best_match:
+        extra_context = f"\n\nSimilar code from repository:\n{best_match.get('snippet', '')}\n"
 
     prompt = f"""
 You are a security code reviewer.
@@ -13,7 +26,7 @@ Analyze this Python code for:
 - Dangerous code patterns
 
 Code:
-{context}
+{context}{extra_context}
 
 Respond briefly with detected issues.
 """
