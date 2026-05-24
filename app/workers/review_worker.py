@@ -1,4 +1,5 @@
 from app.workers.analyzer import analyze_code
+import os
 from redis import Redis
 from rq import Queue
 
@@ -8,13 +9,41 @@ from app.github.github_client import (
     post_pr_comment,
 )
 
-redis_connection = Redis()
+redis_url = os.getenv(
+    "REDIS_URL",
+    "redis://localhost:6379/0"
+)
+
+# Build the Redis connection once so both the API and worker use the same queue.
+redis_connection = Redis.from_url(
+    redis_url
+)
+
+try:
+    redis_connection.ping()
+    print("Redis connected")
+except Exception as e:
+    print("Redis connection error:", e)
 
 queue = Queue(
     connection=redis_connection
 )
 
+try:
+    print(
+        "Queue status:",
+        queue.name,
+        "size=",
+        queue.count
+    )
+except Exception as e:
+    print("Queue status error:", e)
+
 def process_review(payload):
+
+    # This runs inside the RQ worker process when a queued job is picked up.
+    print("Worker started")
+    print("Job received")
 
     repository = payload.get(
         "repository",
@@ -40,6 +69,8 @@ def process_review(payload):
     )
 
     for file in files:
+        print("Processing review")
+
         # Review one changed file at a time so the output stays easy to follow.
         print(f"Reviewing: {file.filename}")
 
@@ -51,6 +82,16 @@ def process_review(payload):
 
         # Run the modular analyzer and collect all findings.
         review = analyze_code(content)
+
+        # Confirm we have analyzer output before trying to post a comment.
+        print(
+            "Analyzer output exists:",
+            review is not None
+        )
+        print(
+            "Analyzer findings count:",
+            len(review["security"]) + len(review["quality"]) + len(review["best_practices"])
+        )
 
         # Build a Markdown message that can be posted as a PR comment.
         review_message = [
@@ -116,8 +157,11 @@ def process_review(payload):
         print("")
 
         # Post the finished review back to the pull request as a GitHub comment.
-        post_pr_comment(
-            repository,
-            pr_number,
-            review_text,
-        )
+        try:
+            post_pr_comment(
+                repository,
+                pr_number,
+                review_text,
+            )
+        except Exception as e:
+            print("PR Comment Error:", e)

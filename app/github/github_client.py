@@ -1,6 +1,12 @@
 from github import Github
 from app.config import GITHUB_TOKEN
 
+# This log helps confirm the token was loaded without exposing its value.
+print(
+    "GitHub token loaded:",
+    bool(GITHUB_TOKEN)
+)
+
 github_client = Github(
     GITHUB_TOKEN
 )
@@ -62,17 +68,30 @@ def post_pr_comment(
     pr_number,
     message
 ):
-    # Load the repository object first so we can reach the pull request.
-    repo = get_repository(
-        repo_name
-    )
+    try:
+        # Load the repository object first so we can reach the pull request.
+        repo = get_repository(
+            repo_name
+        )
+        print(
+            "Repository object exists:",
+            repo is not None
+        )
 
-    # Load the pull request that we want to comment on.
-    pull_request = repo.get_pull(
-        pr_number
-    )
+        # Load the pull request that we want to comment on.
+        pull_request = repo.get_pull(
+            pr_number
+        )
+        print(
+            "PR object exists:",
+            pull_request is not None
+        )
 
-    # Add the review message as a normal PR comment.
-    pull_request.create_issue_comment(
-        message
-    )
+        # Add the review message as a normal PR comment.
+        print("Creating PR comment...")
+        pull_request.create_issue_comment(
+            message
+        )
+        print("Comment successfully posted")
+    except Exception as e:
+        print("PR Comment Error:", e)
