@@ -43,7 +43,8 @@ def get_changed_files(
 
 def get_file_content(
     repo_name,
-    file_path
+    file_path,
+    branch_name=None
 ):
 
     # Load the file contents directly from GitHub.
@@ -55,7 +56,13 @@ def get_file_content(
     )
 
     try:
-        file = repo.get_contents(file_path)
+        print("Fetching file:", file_path)
+        if branch_name:
+            file = repo.get_contents(file_path, ref=branch_name)
+        else:
+            file = repo.get_contents(file_path)
+
+        print("Fetched successfully")
 
         # Some files are binary or not safe to decode as UTF-8.
         return file.decoded_content.decode("utf-8")

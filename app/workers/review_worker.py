@@ -56,11 +56,20 @@ def process_review(payload):
         "full_name"
     )
 
-    pr_number = payload.get(
+    pull_request_payload = payload.get(
         "pull_request",
         {}
-    ).get(
+    )
+
+    pr_number = pull_request_payload.get(
         "number"
+    )
+
+    branch_name = pull_request_payload.get(
+        "head",
+        {}
+    ).get(
+        "ref"
     )
 
     log("Starting review...")
@@ -80,6 +89,7 @@ def process_review(payload):
         content = get_file_content(
             repository,
             file.filename,
+            branch_name,
         )
 
         # Skip files that cannot be safely decoded, like binary files.
