@@ -9,3 +9,5 @@ __pycache__/
 app/storage/review_history.json
 .DS_Store
 app/storage/review_history.json
+.DS_Store
+app/storage/review_history.json
