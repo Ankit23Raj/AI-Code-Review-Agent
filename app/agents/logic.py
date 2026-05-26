@@ -12,7 +12,7 @@ def run_logic_agent(context):
     query = {
         "file_path": "",
         "symbol_name": "",
-        "snippet": context
+        "snippet": context,
     }
 
     search_result = search_similar_code(query)
@@ -38,7 +38,6 @@ Analyze this Python code for:
 
 Code:
 {context}
-
 {extra_context}
 
 Return ONLY valid JSON.
@@ -48,9 +47,6 @@ Do not use triple backticks.
 """
 
     response = ask_model(prompt)
-
-    print("RAW RESPONSE:")
-    print(response)
 
     cleaned = response.strip()
     cleaned = cleaned.replace("\n", " ").replace("\r", " ")
@@ -63,12 +59,11 @@ Do not use triple backticks.
     try:
         payload = json.loads(candidate, strict=False)
 
-        print(payload)
+        message = ""
 
         if isinstance(payload, dict):
 
             if "errors" in payload and isinstance(payload["errors"], list):
-
                 errors = payload["errors"]
 
                 if errors and isinstance(errors[0], dict):
@@ -93,6 +88,9 @@ Do not use triple backticks.
                     if value is True
                 )
 
+                if not message:
+                    message = str(payload)
+
         else:
             message = str(payload)
 
@@ -106,17 +104,14 @@ Do not use triple backticks.
                 message=message,
                 suggestion=payload.get(
                     "suggestion",
-                    "Review the AI-generated findings"
+                    "Review the AI-generated findings",
                 ),
                 confidence=payload.get("confidence", 0.8),
                 agent_name="logic",
             )
         )
-
-    except (json.JSONDecodeError, TypeError, ValueError) as e:
-
-        print("PARSING ERROR:")
-        print(e)
+ 
+    except (json.JSONDecodeError, TypeError, ValueError):
 
         findings.append(
             Finding(

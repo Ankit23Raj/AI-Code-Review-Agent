@@ -48,9 +48,6 @@ Do not use triple backticks.
 
     response = ask_model(prompt)
 
-    print("RAW STYLE RESPONSE:")
-    print(response)
-
     cleaned = response.strip()
     cleaned = cleaned.replace("\n", " ").replace("\r", " ")
     cleaned = re.sub(r"```json", "", cleaned)
@@ -61,8 +58,6 @@ Do not use triple backticks.
 
     try:
         payload = json.loads(candidate, strict=False)
-
-        print(payload)
 
         message = ""
 
@@ -101,6 +96,15 @@ Do not use triple backticks.
                                 if "error" in item:
                                     collected.append(item["error"])
 
+                                elif "description" in item:
+                                    collected.append(item["description"])
+
+                                elif "problem" in item:
+                                    collected.append(item["problem"])
+
+                                elif "issue" in item:
+                                    collected.append(item["issue"])
+
                                 elif "recommendation" in item:
                                     collected.append(item["recommendation"])
 
@@ -129,10 +133,7 @@ Do not use triple backticks.
             )
         )
 
-    except (json.JSONDecodeError, TypeError, ValueError) as e:
-
-        print("PARSING ERROR:")
-        print(e)
+    except (json.JSONDecodeError, TypeError, ValueError):
 
         findings.append(
             Finding(

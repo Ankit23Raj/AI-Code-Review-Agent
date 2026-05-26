@@ -19,6 +19,7 @@ def run_security_agent(context):
     best_match = search_result.get("best_match")
 
     extra_context = ""
+
     if best_match:
         extra_context = (
             f"\n\nSimilar code from repository:\n"
@@ -45,9 +46,6 @@ Do not use triple backticks.
 
     response = ask_model(prompt)
 
-    print("RAW SECURITY RESPONSE:")
-    print(response)
-
     cleaned = response.strip()
     cleaned = cleaned.replace("\n", " ").replace("\r", " ")
     cleaned = re.sub(r"```json", "", cleaned)
@@ -58,12 +56,13 @@ Do not use triple backticks.
 
     try:
         payload = json.loads(candidate, strict=False)
-        print(payload)
 
         message = ""
 
         if isinstance(payload, dict):
+
             if "errors" in payload and isinstance(payload["errors"], list):
+
                 errors = payload["errors"]
 
                 if errors and isinstance(errors[0], dict):
@@ -71,8 +70,10 @@ Do not use triple backticks.
                         error.get("message", "")
                         for error in errors
                     )
+
                 elif errors and isinstance(errors[0], str):
                     message = ", ".join(errors)
+
                 else:
                     message = str(errors)
 
@@ -85,8 +86,12 @@ Do not use triple backticks.
                     for key, value in payload.items()
                     if value is True
                 )
+
                 if not message:
                     message = str(payload)
+
+        else:
+            message = str(payload)
 
         findings.append(
             Finding(
@@ -105,9 +110,7 @@ Do not use triple backticks.
             )
         )
 
-    except (json.JSONDecodeError, TypeError, ValueError) as e:
-        print("PARSING ERROR:")
-        print(e)
+    except (json.JSONDecodeError, TypeError, ValueError):
 
         findings.append(
             Finding(
