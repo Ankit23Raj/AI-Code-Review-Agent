@@ -8,6 +8,10 @@ The project automates lightweight code review for pull requests. GitHub sends a 
 
 ## Architecture Diagram
 
+### Architecture Image Placeholder
+
+Insert an architecture image here for the final portfolio version.
+
 ```mermaid
 flowchart TD
 		A[GitHub] --> B[Webhook]
@@ -88,6 +92,25 @@ Run the worker in a second terminal when testing the queue-based flow.
 ## Screenshots
 
 Add screenshots here after deploying the app locally or to your target environment.
+
+## Demo GIF
+
+Insert a short demo GIF here for the final portfolio version.
+
+## Resume Bullet Points
+
+- Built an end-to-end GitHub PR review pipeline using FastAPI, Redis Queue, and an RQ worker.
+- Aggregated findings across changed files into a single severity-ranked PR summary.
+- Added duplicate comment prevention, review analytics, and persistent review history storage.
+- Containerized the full stack with Docker and Docker Compose for repeatable local deployment.
+
+## Interview Questions
+
+- Why did you separate the webhook receiver from the worker?
+- How does Redis improve the reliability of the review pipeline?
+- How do you avoid posting duplicate PR comments?
+- How do you keep the review output concise and useful for developers?
+- What would you change if the analyzer had to support more rules or higher traffic?
 
 ## Future Improvements
 

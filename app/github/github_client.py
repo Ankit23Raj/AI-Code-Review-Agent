@@ -2,6 +2,7 @@ import os
 
 from github import Github
 from app.config import GITHUB_TOKEN
+from app.utils.logger import log
 
 github_client = Github(
     GITHUB_TOKEN
@@ -56,13 +57,13 @@ def get_file_content(
     )
 
     try:
-        print("Fetching file:", file_path)
+        log(f"Fetching file: {file_path}")
         if branch_name:
             file = repo.get_contents(file_path, ref=branch_name)
         else:
             file = repo.get_contents(file_path)
 
-        print("Fetched successfully")
+        log("Fetched successfully")
 
         # Some files are binary or not safe to decode as UTF-8.
         return file.decoded_content.decode("utf-8")
@@ -71,8 +72,20 @@ def get_file_content(
         return None
 
     except Exception as e:
-        print(f"File read error: {e}")
+        log(f"File read error: {e}", level="ERROR")
         return None
+
+
+def comment_already_exists(pull_request, message):
+    try:
+        target_body = message.strip()
+        for comment in pull_request.get_issue_comments():
+            if (comment.body or "").strip() == target_body:
+                return True
+    except Exception as e:
+        log(f"Duplicate comment check failed: {e}", level="ERROR")
+
+    return False
 
 
 def post_pr_comment(
@@ -85,17 +98,23 @@ def post_pr_comment(
         repo = get_repository(
             repo_name
         )
-        print("Repository object exists:", repo is not None)
+        log(f"Repository object exists: {repo is not None}")
 
         # Load the pull request that we want to comment on.
         pull_request = repo.get_pull(
             pr_number
         )
-        print("PR object exists:", pull_request is not None)
+        log(f"PR object exists: {pull_request is not None}")
+
+        if comment_already_exists(pull_request, message):
+            log("Duplicate PR summary found; skipping comment")
+            return False
 
         # Add the review message as a normal PR comment.
-        print("Creating PR comment...")
+        log("Creating PR comment...")
         pull_request.create_issue_comment(message)
-        print("Comment posted successfully")
+        log("Comment posted successfully")
+        return True
     except Exception as e:
-        print("PR Comment Error:", e)
+        log(f"PR Comment Error: {e}", level="ERROR")
+        return False

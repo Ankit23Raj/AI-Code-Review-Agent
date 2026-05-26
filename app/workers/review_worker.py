@@ -1,4 +1,5 @@
 import os
+import time
 
 # macOS needs this before RQ forks worker processes.
 os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
@@ -8,6 +9,10 @@ from rq import Queue
 
 from app.utils.logger import log
 from app.workers.analyzer import analyze_code
+from app.storage.review_history import (
+    append_review_history,
+    build_review_history_record,
+)
 
 from app.github.github_client import (
     get_changed_files,
@@ -53,6 +58,7 @@ except Exception as e:
 def process_review(payload):
 
     # This runs inside the RQ worker process when a queued job is picked up.
+    start_time = time.time()
     log("Worker started")
     log("Job received")
 
@@ -117,9 +123,7 @@ def process_review(payload):
         review = analyze_code(content)
 
         # Confirm we have analyzer output before trying to post a comment.
-        log(
-            f"Analyzer output exists: {review is not None}"
-        )
+        log(f"Analyzer output exists: {review is not None}")
         log(
             "Analyzer findings count: "
             f"{len(review['security']) + len(review['quality']) + len(review['best_practices'])}"
@@ -133,8 +137,21 @@ def process_review(payload):
         for findings in findings_by_bucket.values()
     )
 
+    high_count = len(findings_by_bucket["security"])
+    medium_count = len(findings_by_bucket["quality"])
+    low_count = len(findings_by_bucket["best_practices"])
+    processing_time = round(time.time() - start_time, 2)
+
     review_message = [
         "## AI Review Summary",
+        "",
+        "### Review Statistics",
+        f"Files reviewed: {files_reviewed}",
+        f"Total findings: {total_findings}",
+        f"HIGH: {high_count}",
+        f"MEDIUM: {medium_count}",
+        f"LOW: {low_count}",
+        f"Processing Time: {processing_time} sec",
         "",
     ]
 
@@ -155,11 +172,6 @@ def process_review(payload):
             "No issues found.",
             "",
         ])
-
-    review_message.extend([
-        f"Files reviewed: {files_reviewed}",
-        f"Total findings: {total_findings}",
-    ])
 
     review_text = "\n".join(review_message)
 
@@ -186,14 +198,25 @@ def process_review(payload):
 
     log("")
 
+    append_review_history(
+        build_review_history_record(
+            repository=repository,
+            pr_number=pr_number,
+            files_reviewed=files_reviewed,
+            findings_count=total_findings,
+        )
+    )
+
     # Post the finished review back to the pull request as a GitHub comment.
     try:
-        post_pr_comment(
+        posted = post_pr_comment(
             repository,
             pr_number,
             review_text,
         )
+        if not posted:
+            log("Review summary comment already exists; skipped posting")
     except Exception as e:
-        log(f"PR Comment Error: {e}")
+        log(f"PR Comment Error: {e}", level="ERROR")
 
     log("Review completed")

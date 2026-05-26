@@ -1,3 +1,7 @@
-def log(message):
+def log(message, level="INFO"):
     # Keep logging simple so beginners can follow what happens in each step.
-    print(message, flush=True)
+    print(f"[{level}] {message}", flush=True)
+
+
+def log_error(message):
+    log(message, level="ERROR")
