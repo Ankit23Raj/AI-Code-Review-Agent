@@ -5,3 +5,5 @@ __pycache__/
 .pytest_cache/
 .idea/
 .vscode/
+.DS_Store
+app/storage/review_history.json
