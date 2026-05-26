@@ -1,0 +1,27 @@
+services:
+  app:
+    build: .
+    container_name: ai-code-review-agent-app
+    ports:
+      - "8000:8000"
+    environment:
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - redis
+
+  worker:
+    build: .
+    container_name: ai-code-review-agent-worker
+    command: rq worker --url redis://redis:6379/0
+    environment:
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    container_name: ai-code-review-agent-redis
+    ports:
+      - "6379:6379"
