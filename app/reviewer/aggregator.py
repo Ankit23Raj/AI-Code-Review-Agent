@@ -1,17 +1,33 @@
+from app.reviewer.schemas import ReviewResult
+
+
 def aggregate_findings(findings):
-    # findings is a list of dictionaries from security, logic, and style agents
-
     if not findings:
-        return {
-            "summary": "No issues found.",
-            "findings": [],
-            "model_used": "",
-            "duration_ms": 0
-        }
+        return ReviewResult(
+            summary="No issues found.",
+            findings=[],
+            model_used="local-stub",
+            duration_ms=0,
+        )
 
-    return {
-        "summary": f"Found {len(findings)} issue(s).",
-        "findings": findings,
-        "model_used": "local-stub",
-        "duration_ms": 0
-    }
+    unique = []
+    seen = set()
+
+    for finding in findings:
+        key = (
+            finding.category,
+            finding.file_path,
+            finding.line_start,
+            finding.line_end,
+            finding.message,
+        )
+        if key not in seen:
+            seen.add(key)
+            unique.append(finding)
+
+    return ReviewResult(
+        summary=f"Found {len(unique)} issue(s).",
+        findings=unique,
+        model_used="local-stub",
+        duration_ms=0,
+    )

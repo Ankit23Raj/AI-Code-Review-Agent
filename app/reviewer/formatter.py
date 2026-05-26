@@ -7,9 +7,9 @@ def format_review_markdown(review):
     lines = []
 
     lines.append("# Review Summary\n")
-    lines.append(f"{review.get('summary', 'No summary available')}\n")
+    lines.append(f"{_get_value(review, 'summary', 'No summary available')}\n")
 
-    findings = review.get("findings", [])
+    findings = _get_value(review,"findings", [])
 
     if not findings:
         lines.append("## No issues found\n")
