@@ -7,26 +7,45 @@ Each checker returns a list of human-readable findings.
 import re
 
 
+def iter_code_lines(content):
+    in_docstring = False
+
+    for line in content.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+
+        if stripped.startswith("#"):
+            continue
+
+        if "\"\"\"" in stripped or "'''" in stripped:
+            quote_count = stripped.count("\"\"\"") + stripped.count("'''")
+            if quote_count % 2 == 1:
+                in_docstring = not in_docstring
+            continue
+
+        if in_docstring:
+            continue
+
+        if "#" in line:
+            line = line.split("#", 1)[0]
+
+        if line.strip():
+            yield line
+
+
 def check_security(content):
     findings = []
-    lower_content = content.lower()
 
-    if "password" in lower_content:
-        findings.append("Contains the word 'password'.")
-
-    if "secret" in lower_content:
-        findings.append("Contains the word 'secret'.")
-
-    if "api_key" in lower_content:
-        findings.append("Contains the word 'api_key'.")
-
-    # Look for simple hardcoded credential patterns such as password = "...".
     credential_pattern = re.compile(
-        r"\b(password|secret|api_key)\b\s*[:=]\s*['\"][^'\"]+['\"]",
+        r"\b(api_key|password|secret|token)\b\s*[:=]\s*(?:['\"][^'\"]+['\"]|[^\s,]+)",
         re.IGNORECASE,
     )
-    if credential_pattern.search(content):
-        findings.append("Possible hardcoded credential detected.")
+
+    for line in iter_code_lines(content):
+        if credential_pattern.search(line):
+            findings.append("Hardcoded credential detected.")
+            break
 
     return findings
 
@@ -34,14 +53,19 @@ def check_security(content):
 def check_code_quality(content):
     findings = []
 
-    if "print(" in content:
-        findings.append("Contains print statement(s).")
+    for line in iter_code_lines(content):
+        if "logger.info(" in line or "logger.debug(" in line:
+            continue
+
+        if re.search(r"(?<!\w)print\s*\(", line):
+            findings.append("Print statement found.")
+            break
 
     if "TODO" in content:
-        findings.append("Contains TODO comment(s).")
+        findings.append("TODO comment found.")
 
-    if len(content) > 1000:
-        findings.append("File is longer than 1000 characters.")
+    if len(content) > 2000:
+        findings.append("Large file size.")
 
     return findings
 

@@ -15,6 +15,13 @@ from app.github.github_client import (
     post_pr_comment,
 )
 
+
+SEVERITY_BY_BUCKET = {
+    "security": "HIGH",
+    "quality": "MEDIUM",
+    "best_practices": "LOW",
+}
+
 redis_url = os.getenv(
     "REDIS_URL",
     "redis://localhost:6379/0"
@@ -79,6 +86,13 @@ def process_review(payload):
         pr_number
     )
 
+    findings_by_bucket = {
+        "security": [],
+        "quality": [],
+        "best_practices": [],
+    }
+    files_reviewed = 0
+
     for file in files:
         log("Processing review")
 
@@ -97,6 +111,8 @@ def process_review(payload):
             log(f"Skipping unreadable file: {file.filename}")
             continue
 
+        files_reviewed += 1
+
         # Run the modular analyzer and collect all findings.
         review = analyze_code(content)
 
@@ -109,77 +125,75 @@ def process_review(payload):
             f"{len(review['security']) + len(review['quality']) + len(review['best_practices'])}"
         )
 
-        # Build a Markdown message that can be posted as a PR comment.
-        review_message = [
-            "## AI Review Result",
-            "",
-            "### Security",
-        ]
+        for bucket in findings_by_bucket:
+            findings_by_bucket[bucket].extend(review[bucket])
 
-        if review["security"]:
-            review_message.extend(
-                f"* {finding}" for finding in review["security"]
-            )
-        else:
-            review_message.append("* No issues found")
+    total_findings = sum(
+        len(findings)
+        for findings in findings_by_bucket.values()
+    )
 
+    review_message = [
+        "## AI Review Summary",
+        "",
+    ]
+
+    for bucket in ("security", "quality", "best_practices"):
+        bucket_findings = findings_by_bucket[bucket]
+        if not bucket_findings:
+            continue
+
+        review_message.append(f"### {bucket.replace('_', ' ').title()}")
+        review_message.extend(
+            f"* {SEVERITY_BY_BUCKET[bucket]}: {finding}"
+            for finding in bucket_findings
+        )
+        review_message.append("")
+
+    if total_findings == 0:
         review_message.extend([
+            "No issues found.",
             "",
-            "### Quality",
         ])
 
-        if review["quality"]:
-            review_message.extend(
-                f"* {finding}" for finding in review["quality"]
-            )
-        else:
-            review_message.append("* No issues found")
+    review_message.extend([
+        f"Files reviewed: {files_reviewed}",
+        f"Total findings: {total_findings}",
+    ])
 
-        review_message.extend([
-            "",
-            "### Best Practices",
-        ])
+    review_text = "\n".join(review_message)
 
-        if review["best_practices"]:
-            review_message.extend(
-                f"* {finding}" for finding in review["best_practices"]
-            )
-        else:
-            review_message.append("* No issues found")
+    log("Security:")
+    if findings_by_bucket["security"]:
+        for finding in findings_by_bucket["security"]:
+            log(f"* {finding}")
+    else:
+        log("* No security findings.")
 
-        review_text = "\n".join(review_message)
+    log("Quality:")
+    if findings_by_bucket["quality"]:
+        for finding in findings_by_bucket["quality"]:
+            log(f"* {finding}")
+    else:
+        log("* No quality findings.")
 
-        log("Security:")
-        if review["security"]:
-            for finding in review["security"]:
-                log(f"* {finding}")
-        else:
-            log("* No security findings.")
+    log("Best Practices:")
+    if findings_by_bucket["best_practices"]:
+        for finding in findings_by_bucket["best_practices"]:
+            log(f"* {finding}")
+    else:
+        log("* No best practice findings.")
 
-        log("Quality:")
-        if review["quality"]:
-            for finding in review["quality"]:
-                log(f"* {finding}")
-        else:
-            log("* No quality findings.")
+    log("")
 
-        log("Best Practices:")
-        if review["best_practices"]:
-            for finding in review["best_practices"]:
-                log(f"* {finding}")
-        else:
-            log("* No best practice findings.")
-
-        log("")
-
-        # Post the finished review back to the pull request as a GitHub comment.
-        try:
-            post_pr_comment(
-                repository,
-                pr_number,
-                review_text,
-            )
-        except Exception as e:
-            log(f"PR Comment Error: {e}")
+    # Post the finished review back to the pull request as a GitHub comment.
+    try:
+        post_pr_comment(
+            repository,
+            pr_number,
+            review_text,
+        )
+    except Exception as e:
+        log(f"PR Comment Error: {e}")
 
     log("Review completed")
