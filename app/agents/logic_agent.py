@@ -28,8 +28,8 @@ Return:
     print(prompt)
 
     return Finding(
-        severity="medium",
-        category="logic",
+        severity="MEDIUM",
+        category="Logic",
         file_path=code_fact.file_path,
         line_start=code_fact.start_line,
         line_end=code_fact.end_line,

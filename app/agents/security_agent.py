@@ -33,8 +33,8 @@ Return:
     print(prompt)
 
     return Finding(
-        severity="high",
-        category="security",
+        severity="HIGH",
+        category="Security",
         file_path=code_fact.file_path,
         line_start=code_fact.start_line,
         line_end=code_fact.end_line,

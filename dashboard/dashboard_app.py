@@ -1,11 +1,10 @@
 from pathlib import Path
 import sys
 from dataclasses import asdict
+import streamlit as st
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-
-import streamlit as st
 
 from app.parser.tree_parser import parse_file
 from app.agents.security import run_security_agent
@@ -13,7 +12,12 @@ from app.agents.logic import run_logic_agent
 from app.agents.style import run_style_agent
 from app.reviewer.aggregator import aggregate_findings
 from app.reviewer.formatter import format_review_markdown
+from app.utils.text_cleaner import clean_text
 
+
+# ==========================
+# PAGE CONFIG
+# ==========================
 
 st.set_page_config(
     page_title="AI Code Review Dashboard",
@@ -23,115 +27,256 @@ st.set_page_config(
 st.title("AI Code Review Dashboard")
 
 st.markdown(
-    "A simple dashboard showing the current AI review pipeline results for sample code."
+    "Upload Python, C++, Java or JavaScript code and let AI review it."
 )
 
 if "review_data" not in st.session_state:
     st.session_state.review_data = None
 
 
-# =========================
-# Run Review Button
-# =========================
+# ==========================
+# LANGUAGE DETECTOR
+# ==========================
+
+def detect_language(filename):
+
+    ext = Path(filename).suffix.lower()
+
+    mapping = {
+        ".py":"python",
+        ".cpp":"cpp",
+        ".c":"c",
+        ".java":"java",
+        ".js":"javascript"
+    }
+
+    return mapping.get(
+        ext,
+        "unknown"
+    )
+
+
+# ==========================
+# FILE UPLOAD
+# ==========================
+
+uploaded_file = st.file_uploader(
+    "Upload code file",
+    type=[
+        "py",
+        "cpp",
+        "c",
+        "java",
+        "js"
+    ]
+)
+
+
+# ==========================
+# RUN REVIEW
+# ==========================
 
 if st.button("Run Review"):
 
-    with st.spinner("Running AI review..."):
+    if uploaded_file is None:
 
-        fixture_path = Path("tests/fixtures/sql_injection.py")
-
-        if not fixture_path.exists():
-            st.error(f"Fixture file not found: {fixture_path}")
-            st.stop()
-
-        content = fixture_path.read_text(
-            encoding="utf-8"
+        st.warning(
+            "Please upload a file"
         )
 
-        code_facts = parse_file(
-            str(fixture_path),
-            content,
-            []
-        )
+        st.stop()
 
-        security_findings = run_security_agent(content)
-        logic_findings = run_logic_agent(content)
-        style_findings = run_style_agent(content)
 
-        findings = [
+    with st.spinner(
+        "Running AI Review..."
+    ):
 
-            asdict(f)
-            for f in (
-                security_findings
-                + logic_findings
-                + style_findings
+        try:
+
+            content = uploaded_file.read().decode(
+                "utf-8"
             )
-        ]
 
-        review = aggregate_findings(findings)
+            file_name = uploaded_file.name
 
-        formatted_review = format_review_markdown(
-            review
-        )
-
-        st.session_state.review_data = {
-
-            "fixture_path": str(fixture_path),
-            "code_facts": code_facts,
-            "findings": findings,
-            "review": review,
-            "formatted_review": formatted_review,
-        }
-
-        st.success("Review complete!")
+            language = detect_language(
+                file_name
+            )
 
 
-# =========================
-# Display Results
-# =========================
+            # Parse only Python for now
+
+            if language=="python":
+
+                try:
+
+                    code_facts = parse_file(
+                        file_name,
+                        content,
+                        []
+                    )
+
+                except:
+
+                    code_facts=[]
+
+            else:
+
+                code_facts=[]
+
+
+            # Agent calls
+
+            security_findings = run_security_agent(
+                content
+            )
+
+            logic_findings = run_logic_agent(
+                content
+            )
+
+            style_findings = run_style_agent(
+                content
+            )
+
+
+            findings=[]
+
+            for f in (
+
+                security_findings+
+                logic_findings+
+                style_findings
+
+            ):
+
+                try:
+
+                    findings.append(
+                        asdict(f)
+                    )
+
+                except:
+
+                    findings.append(
+                        f
+                    )
+
+
+            review = aggregate_findings(
+                findings
+            )
+
+            formatted_review = format_review_markdown(
+                review
+            )
+
+
+            st.session_state.review_data={
+
+                "file_name":file_name,
+                "language":language,
+                "content":content,
+                "code_facts":code_facts,
+                "findings":findings,
+                "review":review,
+                "formatted_review":formatted_review
+
+            }
+
+
+            st.success(
+                "Review Complete"
+            )
+
+        except Exception:
+
+            st.error(
+                "Review failed. Please try again."
+            )
+
+
+# ==========================
+# RESULTS
+# ==========================
 
 if st.session_state.review_data:
 
-    data = st.session_state.review_data
+    data=st.session_state.review_data
 
-    findings = data["findings"]
-    review = data["review"]
+    findings=data["findings"]
+
+    review=data["review"]
 
     st.markdown("---")
 
-    col1, col2, col3, col4 = st.columns(4)
+    st.subheader(
+        "File Details"
+    )
 
-    col1.metric(
-        "Total Findings",
+    c1,c2=st.columns(2)
+
+    c1.info(
+        f"File: {data['file_name']}"
+    )
+
+    c2.info(
+        f"Language: {data['language']}"
+    )
+
+
+    st.subheader(
+        "Code Preview"
+    )
+
+    st.code(
+        data["content"]
+    )
+
+
+    st.markdown("---")
+
+
+    a,b,c,d=st.columns(4)
+
+    a.metric(
+        "Total",
         len(findings)
     )
 
-    col2.metric(
-        "High Severity",
+    b.metric(
+        "High",
         sum(
             1
-            for f in findings
-            if f.get("severity") == "HIGH"
+            for x in findings
+            if x.get(
+                "severity"
+            )=="HIGH"
         )
     )
 
-    col3.metric(
-        "Medium Severity",
+    c.metric(
+        "Medium",
         sum(
             1
-            for f in findings
-            if f.get("severity") == "MEDIUM"
+            for x in findings
+            if x.get(
+                "severity"
+            )=="MEDIUM"
         )
     )
 
-    col4.metric(
-        "Low Severity",
+    d.metric(
+        "Low",
         sum(
             1
-            for f in findings
-            if f.get("severity") == "LOW"
+            for x in findings
+            if x.get(
+                "severity"
+            )=="LOW"
         )
     )
+
 
     st.markdown("---")
 
@@ -140,137 +285,52 @@ if st.session_state.review_data:
     )
 
     st.info(
-        f"{review.summary}\n\n"
-        f"Reviewed file: {data['fixture_path']}"
+        review.summary
     )
 
-    st.markdown(
-        "### Parsed Code Facts"
+
+    st.subheader(
+        "Findings"
     )
 
-    if data["code_facts"]:
-
-        for fact in data["code_facts"]:
-
-            with st.expander(
-                f"{fact.symbol_name} "
-                f"({fact.start_line}-{fact.end_line})"
-            ):
-
-                st.write(
-                    f"**File:** {fact.file_path}"
-                )
-
-                st.write(
-                    f"**Language:** {fact.language}"
-                )
-
-                st.code(
-                    fact.snippet,
-                    language="python"
-                )
-
-    else:
-
-        st.info(
-            "No code facts found."
-        )
-
-
-    # =====================
-    # Findings
-    # =====================
-
-    st.markdown("### Findings")
-
-    for idx, finding in enumerate(
-        review.findings,
+    for i,finding in enumerate(
+        findings,
         start=1
     ):
 
-        severity = finding.get(
-            "severity",
-            "INFO"
-        )
-
-        category = finding.get(
-            "category",
-            "General"
-        )
-
-        message = finding.get(
-            "message",
-            ""
-        )
-
-        suggestion = finding.get(
-            "suggestion",
-            ""
-        )
-
-        agent_name = finding.get(
-            "agent_name",
-            ""
-        )
-
-        file_path = finding.get(
-            "file_path",
-            ""
-        )
-
-        line_start = finding.get(
-            "line_start",
-            0
-        )
-
-        line_end = finding.get(
-            "line_end",
-            0
-        )
-
         with st.expander(
-            f"{idx}. {severity} — {category}"
+
+            f"{i}. "
+            f"{finding.get('severity','INFO')} - "
+            f"{finding.get('category','General')}"
+
         ):
 
             st.write(
-                f"**Message:** {message}"
+                f"Message: {clean_text(finding.get('message',''))}"
             )
 
             st.write(
-                f"**Suggestion:** {suggestion}"
+                f"Suggestion: {clean_text(finding.get('suggestion',''))}"
             )
 
             st.write(
-                f"**Agent:** {agent_name}"
+                f"Agent: {finding.get('agent_name','')}"
             )
 
-            if file_path:
 
-                st.write(
-                    f"**File:** {file_path}"
-                )
-
-            if line_start or line_end:
-
-                st.write(
-                    f"**Location:** "
-                    f"{line_start}-{line_end}"
-                )
-
-
-    st.markdown("---")
-
-    st.markdown(
-        "### Formatted Review"
+    st.subheader(
+        "Formatted Review"
     )
 
     st.code(
-        data["formatted_review"],
+        clean_text(data["formatted_review"]),
         language="markdown"
     )
+
 
 else:
 
     st.info(
-        "Click **Run Review** to start the analysis."
+        "Upload a file and click Run Review"
     )
