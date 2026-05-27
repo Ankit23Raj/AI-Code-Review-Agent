@@ -33,13 +33,39 @@ def get_changed_files(
     pr_number
 ):
 
-    # Pull the file list from the pull request.
+    # Pull the file list from the pull request and fetch safe text content only.
     pull_request = get_pull_request(
         repo_name,
         pr_number
     )
 
-    return pull_request.get_files()
+    changed_files = []
+
+    for file in pull_request.get_files():
+        file_path = getattr(file, "filename", None)
+        if not file_path:
+            continue
+
+        if getattr(file, "status", None) == "removed":
+            log(f"Skipping removed file: {file_path}")
+            continue
+
+        content = get_file_content(
+            repo_name,
+            file_path,
+            getattr(getattr(pull_request, "head", None), "ref", None),
+        )
+
+        if content is None:
+            log(f"Skipping unreadable or binary file: {file_path}")
+            continue
+
+        changed_files.append({
+            "file_path": file_path,
+            "content": content,
+        })
+
+    return changed_files
 
 
 def get_file_content(

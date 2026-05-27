@@ -1,8 +1,10 @@
+import os
 import subprocess
 
 def ask_model(prompt: str) -> str:
+    model_name = os.getenv("OLLAMA_MODEL", "qwen2.5-coder:1.5b")
     result = subprocess.run(
-        ["ollama", "run", "qwen2.5-coder:7b", prompt],
+        ["ollama", "run", model_name, prompt],
         capture_output=True,
         text=True,
         encoding="utf-8",

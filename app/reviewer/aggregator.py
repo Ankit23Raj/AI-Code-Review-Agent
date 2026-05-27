@@ -14,13 +14,21 @@ def aggregate_findings(findings):
     seen = set()
 
     for finding in findings:
+
+        category = finding.get("category") if isinstance(finding, dict) else finding.category
+        file_path = finding.get("file_path") if isinstance(finding, dict) else finding.file_path
+        line_start = finding.get("line_start") if isinstance(finding, dict) else finding.line_start
+        line_end = finding.get("line_end") if isinstance(finding, dict) else finding.line_end
+        message = finding.get("message") if isinstance(finding, dict) else finding.message
+
         key = (
-            finding.category,
-            finding.file_path,
-            finding.line_start,
-            finding.line_end,
-            finding.message,
+            category,
+            file_path,
+            line_start,
+            line_end,
+            message,
         )
+
         if key not in seen:
             seen.add(key)
             unique.append(finding)

@@ -1,5 +1,5 @@
-def get_user(user_id):
+username = input("Enter username: ")
 
-    query = "SELECT * FROM users WHERE id = " + user_id
+query = "SELECT * FROM users WHERE username='" + username + "'"
 
-    return query
+print(query)
